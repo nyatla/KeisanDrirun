@@ -1,7 +1,7 @@
 import {DebugTool,InvalidArgumentException as EARG,RuntimeError} from '../lib/_debug';
 import {ExpNumber,XorShiftRandom} from '../lib/nmath';
 import {j2t,TagCtrl} from '../lib/nstdlib';
-import {AutoScale,DragdropHandler} from '../lib/uikit';
+import {AutoScale,QueryParser,DragdropHandler} from '../lib/uikit';
 import '../extlib/less.min';
 import $ from 'jquery';
 window.$ = $;
@@ -10,61 +10,11 @@ window.jQuery = $;
 
 
 
-class TwitterLink{
-	/**
-	 * ツイッターリンクを生成する。
-	 * @param {*} text 
-	 * @param {*} hashtag 
-	 * @param {*} url 
-	 * @returns 
-	 */
-	static encodeMessage(text,hashtag,url)
-	{
-		var t="https://twitter.com/intent/tweet?text="+encodeURIComponent(text);
-		if(hashtag){
-			t+="&hashtags="+encodeURIComponent(hashtag);
-		}
-		if(url){
-			t+="&url="+url;
-		}
-		return t;
-	}
-	static messageWindow(text,hashtag,url){
-		window.open().location.href = TwitterLink.encodeMessage(text,hashtag,url);
-	}
-}
-
-class QueryParser{
-	constructor(url){
-		let _url=new URL(url?url:window.location);
-		this.spm=_url.searchParams;
-	}
-	/**
-	 * keyがIntならその値のint値、そうでなければdefを返す。
-	 */
-	optInt(key,def){
-		let sp=this.spm;
-		if(sp.has(key) && /[0-9]+/.test(sp.get(key))){
-			return parseInt(sp.get());
-		}
-		return def;
-	}
-	/**
-	 * 文字列のインデクス番号を返す。
-	 * @param {*} key 
-	 * @param {[str]} choice
-	 * @param {*} def 
-	 */
-	optChoice(key,choice,def){
-		let sp=this.spm;
-		if(sp.has(key)){
-			return choice[key];
-		}
-		return def;
-	}
-}
 
 
+/**
+ * 問題１個分の情報クラス
+ */
 class IProblem{
 	/**
 	 * HTML形式の問題文（表示用）
@@ -89,30 +39,95 @@ class IProblem{
 		throw new Error();
 	}
 }
-class BaseProblemsBuilder{
-	constructor(seed){
+/**
+ * 問題ビルダーの基本クラス
+ */
+class AProblemsBuilder{
+	constructor(seed,descriptions)
+	{
 		this._rand=new XorShiftRandom(seed);
+		this._descriptions=descriptions;
 	}
 	/**
 	 * 問題文を返す {IProblem[]}
+	 * @override
 	 */
 	get problems(){}
+	/**
+	 * title
+	 */
+	get title(){return this._descriptions?this._descriptions["title"]:"No description."}
 }
+
+/**
+ * レイアウトのデバック用ダミー問題
+ */
+class DummyProblems extends AProblemsBuilder
+{
+	constructor(seed)
+	{
+		super(
+			seed,{
+				"title":"レイアウトデバック用",
+				"hint":"BUY BITCOIN!"
+			});
+		class DummyProblem extends IProblem
+		{
+			/**
+			 * 
+			 * @param {*} problem_html 
+			 * @param {*} answer 数値
+			 */
+			constructor(problem_html,answer,check){
+				super();
+				this._problem=problem_html;
+				this._answer=answer;
+				this._check=check;
+			}
+			get problem(){
+				return this._problem;
+			}
+			get answerString(){
+				return this._answer.toString();
+			}
+			/**
+			 * strが回答としてふさわしいかを返す。
+			 * @param {*} str 
+			 * @returns 
+			 */
+			check(str){
+				return this._check;
+			}
+		}
+		let _t=this;
+		let rand=this._rand;
+		this._problems=[
+			new DummyProblem(katex.renderToString("012345678901234567890123456789", {throwOnError: false}),"0123456789",true),
+			new DummyProblem(katex.renderToString("012345678901234567890123456789", {throwOnError: false}),"0123456789",false)
+		];
+	}
+	get problems(){
+		return this._problems;
+	}
+}
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
  * ExpNumberの計算問題集ベースクラス
  */
-class ExpNumberProblemBuilder extends BaseProblemsBuilder
+class ExpNumberProblemBuilder extends AProblemsBuilder
 {
 	/**
 	 * 
 	 * @param {*} seed 
-	 * @param {*} dparams 
+	 * @param {int[]} dparams 
 	 * [fmin,fmax,dmin,dmax,emin,emax]
 	 */
-	constructor(seed,dparams)
+	constructor(seed,desc,dparams)
 	{
-		super(seed);
+		super(seed,desc);
 		this._dparams=dparams?dparams:[1,999,-5,3,1,3];//デフォルトパラメータ
 	}
 	/**
@@ -174,12 +189,21 @@ class ExpNumberProblem extends IProblem{
 	}
 }
 
+const X_EN_DESC=
+{
+	"title":"有効数字計算問題",
+	"hint":"有効数字の計算ドリルです。答えは<b>1e10</b>や<b>-1.2e-10</b>と入力してください。<br/><b>1.2e-1</b>は<b>0.12</b>,<b>1.2*10^-2</b>,<b>12e-2</b>にもできますが、<b>1.2e2</b>を<b>120</b>にすることはできません。(有効数字が異なるため)"
+};
+
 
 class SumEnProblems extends ExpNumberProblemBuilder
 {
 	constructor(seed,n)
 	{
-		super(seed);
+		super(seed,{
+			"title":"有効数字の足し算",
+			"hint":X_EN_DESC["hint"]
+		});
 		class SumEnProblem extends ExpNumberProblem{
 			constructor(l,r)
 			{
@@ -201,7 +225,10 @@ class SubEnProblems extends ExpNumberProblemBuilder
 {
 	constructor(seed,n)
 	{
-		super(seed);
+		super(seed,{
+			"title":"有効数字の引き算",
+			"hint":X_EN_DESC["hint"]
+		});
 		class SubEnProblem extends ExpNumberProblem{
 			constructor(l,r)
 			{
@@ -223,7 +250,10 @@ class MulEnProblems extends ExpNumberProblemBuilder
 {
 	constructor(seed,n)
 	{
-		super(seed);
+		super(seed,{
+			"title":"有効数字の掛け算",
+			"hint":X_EN_DESC["hint"]
+		});
 		class MulEnProblem extends ExpNumberProblem{
 			constructor(l,r)
 			{
@@ -245,7 +275,10 @@ class DivEnProblems extends ExpNumberProblemBuilder
 {
 	constructor(seed,n)
 	{
-		super(seed);
+		super(seed,{
+			"title":"有効数字の割り算",
+			"hint":X_EN_DESC["hint"]
+		});
 		class DivEnProblem extends ExpNumberProblem{
 			constructor(l,r)
 			{
@@ -263,6 +296,178 @@ class DivEnProblems extends ExpNumberProblemBuilder
 		this._problems=pbs;
 	}
 }
+/*
+ * ----------------------------------------------------------------------------------------------------------------
+ */
+const STD_N_DESC=
+{
+	"title":"計算問題",
+	"hint":"整数の計算ドリルです。答えは数値のみを入力をしてください。"
+};
+
+
+class StdNumberProblem extends IProblem
+{
+	/**
+	 * 
+	 * @param {*} problem_html 
+	 * @param {*} answer 数値
+	 */
+	constructor(problem_html,answer){
+		super();
+		this._problem=problem_html;
+		this._answer=answer;
+	}
+	get problem(){
+		return this._problem;
+	}
+	get answerString(){
+		return this._answer.toString();
+	}
+	/**
+	 * strが回答としてふさわしいかを返す。
+	 * @param {*} str 
+	 * @returns 
+	 */
+	check(str){
+		let n=parseInt(str,10);
+		return isNaN(n)?undefined:n==this._answer;
+	}
+	static createLinearExp(l,r,op,a){
+		return new StdNumberProblem(katex.renderToString((l<0?"("+l+")":l)+op+(r<0?"("+r+")":r), {throwOnError: false}),a);
+	}
+}
+
+
+function inRange(v,min,max){
+	return min<=v && v<max;
+}
+function challangeLoop(loop,f){
+	for(var i=0;i<loop;i++){
+		if(f()==true){
+			return;
+		}
+	}
+	const message="challangeLoop Exception";
+	console.log(message);
+	alert(message);
+	throw new Error(message);
+}
+/**
+ * 2-3桁の整数同士の足し算
+ */
+class SumProblems extends AProblemsBuilder
+{
+	/**
+	 * 
+	 * @param {*} seed 
+	 * @param {int[]} dparams 
+	 * [left_min,left_max,right_min,right_max]
+	 */
+	constructor(seed,n,dparams)
+	{
+		super(
+			seed,{
+				"title":"整数の足し算",
+				"hint":STD_N_DESC["hint"]
+			});
+		let _t=this;
+		let rand=this._rand;
+		dparams=dparams?dparams:[[10,1000],[10,1000],[0,0x7fffffff]];//デフォルトパラメータ(lの範囲,rの範囲,答えの範囲)
+		let src=[];
+		for(var i=0;i<n;i++){
+			challangeLoop(1000,()=>{
+				let l=rand.nextInt31(dparams[0][0],dparams[0][1]);
+				let r=rand.nextInt31(dparams[1][0],dparams[1][1]);
+				let a=l+r;
+				if(!inRange(a,dparams[2][0],dparams[2][1])){return false;}//除外条件
+				if(src.find((v)=>{return v[0]==l && v[1]==r;})){return false;}//同じのがあったらダメ
+				src.push([l,r,a]);
+				return true;
+			});
+		}
+		this._problems=Array.from(src,x=>StdNumberProblem.createLinearExp(x[0],x[1],"+",x[2]));
+	}
+	get problems(){
+		return this._problems;
+	}
+}
+/**
+ * 2-3桁の整数同士の引き算
+ */
+class SubProblems extends AProblemsBuilder
+{
+	/**
+	 * 
+	 * @param {*} seed 
+	 * @param {int[]} dparams 
+	 * [left_min,left_max,right_min,right_max]
+	 */
+	constructor(seed,n,dparams)
+	{
+		super(
+			seed,{
+				"title":"整数の引き算",
+				"hint":STD_N_DESC["hint"]
+			});
+		let _t=this;
+		let rand=this._rand;
+		dparams=dparams?dparams:[[10,1000],[10,1000],[-0x7fffffff,0x7fffffff]];//デフォルトパラメータ(lの範囲,rの範囲,答えの範囲)
+		let src=[];
+		for(var i=0;i<n;i++){
+			challangeLoop(1000,()=>{
+				let l=rand.nextInt31(dparams[0][0],dparams[0][1]);
+				let r=rand.nextInt31(dparams[1][0],dparams[1][1]);
+				let a=l-r;
+				if(!inRange(a,dparams[2][0],dparams[2][1])){return false;}//除外条件
+				if(src.find((v)=>{return v[0]==l && v[1]==r;})){return false;}//同じのがあったらダメ
+				src.push([l,r,a]);
+				return true;
+			});
+		}
+		this._problems=Array.from(src,x=>StdNumberProblem.createLinearExp(x[0],x[1],"-",x[2]));
+	}
+	get problems(){
+		return this._problems;
+	}
+}
+class MulProblems extends AProblemsBuilder
+{
+	/**
+	 * 
+	 * @param {*} seed 
+	 * @param {int[]} dparams 
+	 * [left_min,left_max,right_min,right_max]
+	 */
+	constructor(seed,n,dparams)
+	{
+		super(
+			seed,{
+				"title":"正の整数の掛け算",
+				"hint":STD_N_DESC["hint"]
+			});
+		let _t=this;
+		let rand=this._rand;
+		dparams=dparams?dparams:[[1,999],[1,999],[0,0x7fffffff]];//デフォルトパラメータ(lの範囲,rの範囲,答えの範囲)
+		let src=[];
+		for(var i=0;i<n;i++){
+			challangeLoop(1000,()=>{
+				let l=rand.nextInt31(dparams[0][0],dparams[0][1]);
+				let r=rand.nextInt31(dparams[1][0],dparams[1][1]);
+				let a=l*r;
+				if(!inRange(a,dparams[2][0],dparams[2][1])){return false;}//除外条件
+				if(src.find((v)=>{return v[0]==l && v[1]==r;})){return false;}//同じのがあったらダメ
+				src.push([l,r,a]);
+				return true;
+			});
+		}
+		this._problems=Array.from(src,x=>StdNumberProblem.createLinearExp(x[0],x[1],"\\times",x[2]));
+	}
+	get problems(){
+		return this._problems;
+	}
+}
+
 
 
 class ProblemRow extends TagCtrl
@@ -422,7 +627,7 @@ class App{
 	constructor(){
 		let q=new QueryParser();
 		this.seed=q.optInt("s",Math.floor(Math.random()*0x7fffffff));
-		this.mode=q.optChoice("m",{"esum":1,"esub":2,"emul":3,"ediv":4},1);
+		this.mode=q.optStr("m","dbg");
 	}
 	get hashtag(){
 		return "計算ドリルん";
@@ -431,29 +636,28 @@ class App{
 		return "./index.html?m="+this.mode+"&s="+this.seed;
 	}
 	get description(){
-		let tt={
-			1:"有効数字の足し算",
-			2:"有効数字の引き算",
-			3:"有効数字の掛け算",
-			4:"有効数字の割り算",
-		};
-		return tt[this.mode]+" 問題シード"+this.seed;
+		return this.problems.title+" 問題シード"+this.seed;
 	}
 	run(){
-		let pt=new ProblemTable(((mode,seed)=>
+		this.problems=((mode,seed)=>
 		{
 			switch(mode)
 			{
-				case 0:return new SumEnProblems(seed,10);
-				case 1:return new SubEnProblems(seed,10);
-				case 2:return new MulEnProblems(seed,10);
-				case 3:return new DivEnProblems(seed,10);
+				case "dbg":return new DummyProblems();
+				case "esum":return new SumEnProblems(seed,10);
+				case "esub":return new SubEnProblems(seed,10);
+				case "emul":return new MulEnProblems(seed,10);
+				//case "ediv":return new DivEnProblems(seed,10);
+				case "sum":return new SumProblems(seed,10);
+				case "sub":return new SubProblems(seed,10);
+				case "mul":return new MulProblems(seed,10);
 				default:
 					return undefined;
 			}
-		})(this.mode,this.seed));
-		pt.render($("#main"));
-		let sc=new Score(this,pt);
+		})(this.mode,this.seed);
+		this.pt=new ProblemTable(this.problems);
+		this.pt.render($("#main"));
+		let sc=new Score(this,this.pt);
 		sc.render($("#score"));
 		let sb=new ShareButton(this);
 		sb.render($("#header"));
