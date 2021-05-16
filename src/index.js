@@ -1,7 +1,7 @@
 import {DebugTool,InvalidArgumentException as EARG,RuntimeError} from '../lib/_debug';
 import {ExpNumber,XorShiftRandom} from '../lib/nmath';
-import {j2t,TagCtrl} from '../lib/nstdlib';
-import {AutoScale,QueryParser,DragdropHandler} from '../lib/uikit';
+import {j2t} from '../lib/nstdlib';
+import {AutoScale,QueryParser,TagCtrl,TwitterLink} from '../lib/uikit';
 import '../extlib/less.min';
 import $ from 'jquery';
 window.$ = $;
@@ -43,10 +43,10 @@ class IProblem{
  * 問題ビルダーの基本クラス
  */
 class AProblemsBuilder{
-	constructor(seed,descriptions)
+	constructor(seed)
 	{
 		this._rand=new XorShiftRandom(seed);
-		this._descriptions=descriptions;
+		RuntimeError.ASSERT(this.descriptions,"MUST IMPLEMENT popperty.descriptions");
 	}
 	/**
 	 * 問題文を返す {IProblem[]}
@@ -56,7 +56,8 @@ class AProblemsBuilder{
 	/**
 	 * title
 	 */
-	get title(){return this._descriptions?this._descriptions["title"]:"No description."}
+	get title(){return this.descriptions?this.descriptions["title"]:"No description."}
+	// get descriptions(){return this._descriptions;}
 }
 
 /**
@@ -66,11 +67,7 @@ class DummyProblems extends AProblemsBuilder
 {
 	constructor(seed)
 	{
-		super(
-			seed,{
-				"title":"レイアウトデバック用",
-				"hint":"BUY BITCOIN!"
-			});
+		super();
 		class DummyProblem extends IProblem
 		{
 			/**
@@ -103,13 +100,22 @@ class DummyProblems extends AProblemsBuilder
 		let rand=this._rand;
 		this._problems=[
 			new DummyProblem(katex.renderToString("012345678901234567890123456789", {throwOnError: false}),"0123456789",true),
-			new DummyProblem(katex.renderToString("012345678901234567890123456789", {throwOnError: false}),"0123456789",false)
+			new DummyProblem(katex.renderToString("012345678901234567890123456789", {throwOnError: false}),"0123456789",false),
+			new DummyProblem(katex.renderToString("(-123\\times10^{-1})+(-123\\times10^{-1})", {throwOnError: false}),"0123456789",false),
 		];
 	}
 	get problems(){
 		return this._problems;
 	}
+	get description(){
+		return this.prototype.descriptions(key);
+	}
+
 }
+DummyProblems.prototype.descriptions={
+	"title":"レイアウトデバック用",
+	"hint":"BUY BITCOIN!",
+};
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -125,9 +131,9 @@ class ExpNumberProblemBuilder extends AProblemsBuilder
 	 * @param {int[]} dparams 
 	 * [fmin,fmax,dmin,dmax,emin,emax]
 	 */
-	constructor(seed,desc,dparams)
+	constructor(seed,dparams)
 	{
-		super(seed,desc);
+		super(seed);
 		this._dparams=dparams?dparams:[1,999,-5,3,1,3];//デフォルトパラメータ
 	}
 	/**
@@ -192,7 +198,7 @@ class ExpNumberProblem extends IProblem{
 const X_EN_DESC=
 {
 	"title":"有効数字計算問題",
-	"hint":"有効数字の計算ドリルです。答えは<b>1e10</b>や<b>-1.2e-10</b>と入力してください。<br/><b>1.2e-1</b>は<b>0.12</b>,<b>1.2*10^-2</b>,<b>12e-2</b>にもできますが、<b>1.2e2</b>を<b>120</b>にすることはできません。(有効数字が異なるため)"
+	"hint":"有効数字の計算ドリルです。答えは<b>1e10</b>や<b>-1.2e-10</b>と入力してください。<br/><b>1.2e-1</b>は<b>0.12</b>,<b>1.2*10^-2</b>,<b>12×10^-2</b>,<b>12e-2</b>とも書けますが、<b>1.2e2</b>を<b>120</b>にすることはできません。(有効数字が異なるため)"
 };
 
 
@@ -200,10 +206,7 @@ class SumEnProblems extends ExpNumberProblemBuilder
 {
 	constructor(seed,n)
 	{
-		super(seed,{
-			"title":"有効数字の足し算",
-			"hint":X_EN_DESC["hint"]
-		});
+		super(seed);
 		class SumEnProblem extends ExpNumberProblem{
 			constructor(l,r)
 			{
@@ -221,14 +224,16 @@ class SumEnProblems extends ExpNumberProblemBuilder
 		this._problems=pbs;
 	}
 }
+SumEnProblems.prototype.descriptions={
+	"title":"有効数字の足し算",
+	"hint":X_EN_DESC["hint"]
+}
+
 class SubEnProblems extends ExpNumberProblemBuilder
 {
 	constructor(seed,n)
 	{
-		super(seed,{
-			"title":"有効数字の引き算",
-			"hint":X_EN_DESC["hint"]
-		});
+		super(seed);
 		class SubEnProblem extends ExpNumberProblem{
 			constructor(l,r)
 			{
@@ -246,14 +251,16 @@ class SubEnProblems extends ExpNumberProblemBuilder
 		this._problems=pbs;
 	}
 }
+SubEnProblems.prototype.descriptions={
+	"title":"有効数字の引き算",
+	"hint":X_EN_DESC["hint"]
+}
+
 class MulEnProblems extends ExpNumberProblemBuilder
 {
 	constructor(seed,n)
 	{
-		super(seed,{
-			"title":"有効数字の掛け算",
-			"hint":X_EN_DESC["hint"]
-		});
+		super(seed);
 		class MulEnProblem extends ExpNumberProblem{
 			constructor(l,r)
 			{
@@ -271,14 +278,16 @@ class MulEnProblems extends ExpNumberProblemBuilder
 		this._problems=pbs;
 	}
 }
+MulEnProblems.prototype.descriptions={
+	"title":"有効数字の掛け算",
+	"hint":X_EN_DESC["hint"]
+}
+
 class DivEnProblems extends ExpNumberProblemBuilder
 {
 	constructor(seed,n)
 	{
-		super(seed,{
-			"title":"有効数字の割り算",
-			"hint":X_EN_DESC["hint"]
-		});
+		super(seed);
 		class DivEnProblem extends ExpNumberProblem{
 			constructor(l,r)
 			{
@@ -296,12 +305,16 @@ class DivEnProblems extends ExpNumberProblemBuilder
 		this._problems=pbs;
 	}
 }
+DivEnProblems.prototype.descriptions={
+	"title":"有効数字の割り算",
+	"hint":X_EN_DESC["hint"]
+}
 /*
  * ----------------------------------------------------------------------------------------------------------------
  */
 const STD_N_DESC=
 {
-	"title":"計算問題",
+	"title":"整数の計算問題",
 	"hint":"整数の計算ドリルです。答えは数値のみを入力をしてください。"
 };
 
@@ -366,11 +379,7 @@ class SumProblems extends AProblemsBuilder
 	 */
 	constructor(seed,n,dparams)
 	{
-		super(
-			seed,{
-				"title":"整数の足し算",
-				"hint":STD_N_DESC["hint"]
-			});
+		super(seed);
 		let _t=this;
 		let rand=this._rand;
 		dparams=dparams?dparams:[[10,1000],[10,1000],[0,0x7fffffff]];//デフォルトパラメータ(lの範囲,rの範囲,答えの範囲)
@@ -392,6 +401,10 @@ class SumProblems extends AProblemsBuilder
 		return this._problems;
 	}
 }
+SumProblems.prototype.descriptions={
+	"title":"整数の足し算",
+	"hint":STD_N_DESC["hint"]
+}
 /**
  * 2-3桁の整数同士の引き算
  */
@@ -405,11 +418,7 @@ class SubProblems extends AProblemsBuilder
 	 */
 	constructor(seed,n,dparams)
 	{
-		super(
-			seed,{
-				"title":"整数の引き算",
-				"hint":STD_N_DESC["hint"]
-			});
+		super(seed);
 		let _t=this;
 		let rand=this._rand;
 		dparams=dparams?dparams:[[10,1000],[10,1000],[-0x7fffffff,0x7fffffff]];//デフォルトパラメータ(lの範囲,rの範囲,答えの範囲)
@@ -431,6 +440,10 @@ class SubProblems extends AProblemsBuilder
 		return this._problems;
 	}
 }
+SubProblems.prototype.descriptions={
+	"title":"整数の引き算",
+	"hint":STD_N_DESC["hint"]
+}
 class MulProblems extends AProblemsBuilder
 {
 	/**
@@ -441,11 +454,7 @@ class MulProblems extends AProblemsBuilder
 	 */
 	constructor(seed,n,dparams)
 	{
-		super(
-			seed,{
-				"title":"正の整数の掛け算",
-				"hint":STD_N_DESC["hint"]
-			});
+		super(seed);
 		let _t=this;
 		let rand=this._rand;
 		dparams=dparams?dparams:[[1,999],[1,999],[0,0x7fffffff]];//デフォルトパラメータ(lの範囲,rの範囲,答えの範囲)
@@ -467,6 +476,10 @@ class MulProblems extends AProblemsBuilder
 		return this._problems;
 	}
 }
+MulProblems.prototype.descriptions={
+	"title":"正の整数の掛け算",
+	"hint":STD_N_DESC["hint"]
+}
 
 
 
@@ -480,12 +493,12 @@ class ProblemRow extends TagCtrl
 	get html(){
 		return j2t(["li",[
 			["div",[
-				["div","問題&nbsp;"+this._number],
+				["div",{"class":"antitle"},"<i class='fas fa-caret-right'></i>問題&nbsp;"+this._number],
 				["div",this._problem.problem],
 			]],
 			["div",[
 				["div",{"class":"antxt"},"答え"],
-				["input",{"type":"text","class":"answer"},""]
+				["input",{"type":"text","class":"answer","placeholder":"未回答"},""]
 			]
 			]]]);
 	}
@@ -501,13 +514,22 @@ class ProblemRow extends TagCtrl
 	confirmAnswer(){
 		let tag=this.tag;
 		let tip=tag.find(".antxt");
-		let val=tag.find(".answer").val().trim();
+		let input=tag.find(".answer");
+		let ptitle=tag.find(".antitle");
+		//^,A-Z,a-z,0-9の半角化、スペースの削除
+		let val=input.val().replace(/\s+/g,"").replace(/\＾/,"^").replace(/[Ａ-Ｚａ-ｚ０-９]/g, function(s) {
+			return String.fromCharCode(s.charCodeAt(0) - 0xFEE0);
+		});
+		input.val(val);
+		input.attr("disabled","true");
 		if(this._problem.check(val)){
-			tip.text("〇 正解").css({"background-color":"green","color":"white","border-radius":"0.25em"});
+			tip.html("<i class='far fa-circle'></i> 正解").css({"background-color":"green","color":"white","border-radius":"0.25em"});
 			tag.css({"background-color":"lightgreen"});
 			return 0;
 		}else{
-			tip.text("× 回答:"+this._problem.answerString).css({"background-color":"red","color":"white","border-radius":"0.25em"});
+			tip.html("<i class='fas fa-times'></i> 不正解").css({"background-color":"red","color":"white","border-radius":"0.25em"});
+			ptitle.html(ptitle.html()+"<span style='padding-left:3em;'><i class='far fa-hand-point-right'></i>正解は<b>"+this._problem.answerString+"</b>です。</span>");
+			// tip.text("× 回答:"+this._problem.answerString).css({"background-color":"red","color":"white","border-radius":"0.25em"});
 			tag.css({"background-color":"lightpink"});
 			return val.length==0?2:1;
 		}
@@ -526,7 +548,7 @@ class Score extends TagCtrl{
 				["div",{"class":"nonactive"},[
 					["div",{"class":"score"},""],
 					["div",{"class":"details"},""],
-					["button",{"id":"b2"},"ツイッターに投擲"]
+					["button",{"id":"b2"},"結果をTwitterへ投稿"]
 					]
 				],
 			
@@ -555,7 +577,7 @@ class Score extends TagCtrl{
 			_t.app.last_score=Math.floor(s[0]*100/(s[0]+s[1]+s[2]));
 		});
 		_bn2.on("click",()=>{
-			TwitterLink.messageWindow(_t.app.description+"\n"+"点数は"+_t.app.last_score+"点でした。\n",_t.app.hashtag,_t.app.url);
+			TwitterLink.messageWindow(_t.app.description+"\n"+"点数は"+_t.app.last_score+"点でした。\n",_t.app.hashtag,_t.app.url("problem"));
 		});
 		_bn2.css({"background-color":"#cccccc"}).prop("disabled", true);
 		tag.find("div").css({"color":"#cccccc"});
@@ -590,6 +612,7 @@ class ProblemTable extends TagCtrl{
 		let rows=[];
 		for(var i=0;i<this._p.length;i++){
 			this._p[i].bind($(tags[i]));
+			console.log($(tags[i]).width());		
 		}
 	}
 	confirmAnswer(){
@@ -609,66 +632,118 @@ class ShareButton extends TagCtrl{
 	get html(){
 		/**
 		 */
-		return '<i class="fab fa-twitter-square"></i>';
+		return j2t([
+			["ul",[
+				["li",{},'<span id="newproblem">新しい問題</span>']
+				]
+			],
+			["div",{},'<div><i id="share" class="fab fa-twitter"></i></div><div><a href="./donation.html"><i id="share" class="fab fa-btc"></i></a></div>'],
+		]);
 	}
 	bind(tag){
 		const _t=this;
 		super.bind(tag);
-		let _bn=tag.find("i");
-		_bn.on("click",()=>{
-			TwitterLink.messageWindow("ブラウザ用の計算ドリル - ("+_t.app.description+")",_t.app.hashtag,_t.app.url);
+		tag.find("#share").on("click",()=>{
+			TwitterLink.messageWindow("挑戦者募集 - "+_t.app.description,_t.app.hashtag,_t.app.url("problem"));
+		});
+		tag.find("#newproblem").on("click",()=>{
+			location.href=_t.app.url("category");
 		});
 	}
 }
 
-
-
+class Info extends TagCtrl{
+	constructor(app){
+		super();
+		this.app=app;
+	}
+	get html(){
+		/**
+		 */
+		return j2t([["div",[
+			["span",{"style":"font-size:1em;"},this.app.problems.title],
+			["span",{"style":"font-size:0.6em;"},"(ｼｰﾄﾞ:"+this.app.seed+")"],
+			// ["span",{"id":"info_tweet"},'<i class="fab fa-twitter"></i><span style="color:white">問題をツイート</span>']
+			]
+			],
+			["p",this.app.problems.descriptions["hint"]]]
+		);
+	}
+	bind(tag){
+		const _t=this;
+		super.bind(tag);
+	}
+}
+class Links extends TagCtrl{
+	constructor(app){
+		super();
+		this.app=app;
+	}
+	get html(){
+		let lis=this.app.PROBLEMS_TBL.map(x=>["li",[["a",{"href":"./index.html?m="+x[0]},x[1].prototype.descriptions["title"]]]]);
+		return j2t(["ul",lis]);
+	}
+	bind(tag){
+		const _t=this;
+		super.bind(tag);
+	}
+}
 class App{
-	constructor(){
+	constructor(v){
 		let q=new QueryParser();
 		this.seed=q.optInt("s",Math.floor(Math.random()*0x7fffffff));
-		this.mode=q.optStr("m","dbg");
+		this.mode=q.optStr("m","m");
+		$("#version").html(v);
 	}
 	get hashtag(){
 		return "計算ドリルん";
 	}
-	get url(){
-		return "./index.html?m="+this.mode+"&s="+this.seed;
+	url(type){
+		switch(type){
+			case "category":return "https://nyatla.jp/drirun/index.html?m="+this.mode;
+			case "problem" :return "https://nyatla.jp/drirun/index.html?m="+this.mode+"&s="+this.seed;
+			default:
+				throw new RuntimeError();
+		}
 	}
 	get description(){
-		return this.problems.title+" 問題シード"+this.seed;
+		return this.problems.title+"(問題ｼｰﾄﾞ"+this.seed+")";
 	}
 	run(){
-		this.problems=((mode,seed)=>
-		{
-			switch(mode)
-			{
-				case "dbg":return new DummyProblems();
-				case "esum":return new SumEnProblems(seed,10);
-				case "esub":return new SubEnProblems(seed,10);
-				case "emul":return new MulEnProblems(seed,10);
-				//case "ediv":return new DivEnProblems(seed,10);
-				case "sum":return new SumProblems(seed,10);
-				case "sub":return new SubProblems(seed,10);
-				case "mul":return new MulProblems(seed,10);
-				default:
-					return undefined;
-			}
-		})(this.mode,this.seed);
+		let item=this.PROBLEMS_TBL.find(x=>x[0]==this.mode);
+		if(!item){
+			item=this.PROBLEMS_TBL[0];
+		}
+		this.problems=item[2](this.seed,10);
 		this.pt=new ProblemTable(this.problems);
 		this.pt.render($("#main"));
 		let sc=new Score(this,this.pt);
 		sc.render($("#score"));
 		let sb=new ShareButton(this);
 		sb.render($("#header"));
-		new AutoScale(0,24);
+		let info=new Info(this);
+		info.render($("#info"));
+		new AutoScale(30,0,30);
+		let links=new Links(this);
+		links.render($("#links"));
 	}
 }
+App.prototype.PROBLEMS_TBL=
+[
+	// ["dbg" ,DummyProblems,(seed,n)=>{return new DummyProblems();}],
+	["sum" ,SumProblems  ,(seed,n)=>{return new SumProblems(seed,n)}],
+	["sub" ,SubProblems  ,(seed,n)=>{return new SubProblems(seed,n)}],
+	["mul" ,MulProblems  ,(seed,n)=>{return new MulProblems(seed,n)}],
+	["esum",SumEnProblems,(seed,n)=>{return new SumEnProblems(seed,n)}],
+	["esub",SubEnProblems,(seed,n)=>{return new SubEnProblems(seed,n)}],
+	["emul",MulEnProblems,(seed,n)=>{return new MulEnProblems(seed,n)}],
+]
+
 
 $(document).ready(function()
 {
-	const VERSION="20210420.01";
-	(new App()).run();
+	const VERSION="v20210515.03";
+	(new App(VERSION)).run();
 });
 
 
