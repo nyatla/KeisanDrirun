@@ -1,3 +1,19 @@
+@CL_BS_PRIMARY:#0d6efd;
+@CL_BS_SECONDARY:#6c757d;
+@CL_BS_SUCCESS:#198754;
+@CL_BS_DANGER:#dc3545;
+@CL_BS_WARNING:#ffc107;
+@CL_BS_INFO:#0dcaf0;
+@CL_BS_LIGHT:#f8f9fa;
+@CL_BS_DARK:#212529;
+
+.TWITTER_PANEL{
+	cursor:pointer;
+	color: white;
+	background-color: #1b95e0;
+}
+
+
 @font-face {
     font-family: 'D7';
     src: url('./font/JerseyLetters.ttf');
@@ -11,7 +27,7 @@ body{
 	padding:0;
 	margin:auto;
 	width:100%;
-	background-color:#fafafa;
+	background-color:#eee;
 	color:rgb(80, 80, 80);
 	letter-spacing: 0em;
 	font-family:"Osaka?等幅","ＭＳ ゴシック","monospace";
@@ -36,88 +52,131 @@ button{
 a{
 	text-decoration:none; 
 }
+
 #page{
     margin-left: auto;
     margin-right: auto;
 	max-width:32em;
 }
 #contents{
-	margin:0.5em;
-	padding:auto;
+	// margin:0 0.5em;
+	padding:0 0.5em;
 	height:100%;	
 	text-align:left;
-	>div{
-		max-width:30em;
-		margin:0;
-		padding:0;
-	}
+	background-color:#fafafa;
 	>#info{
-		border:solid 0.01em black;
+		border:solid 0.01em @CL_BS_SECONDARY;
 		border-radius: 0.25em;
-		padding:0.1em;
+		padding:0.25em 0.5em;
 		>p{
 			margin:0;
-			padding:0;
-
 			font-size:0.6em;
 		}
+		// #info_tweet{
+		// 	font-size:0.6em;
+		// 	border-radius: 0.2em;
+		// 	padding:0.25em 0.5em;
+		// 	&:extend(.TWITTER_PANEL);
+		// }
 	}
 
 	>#main{
 		>ul{
 			margin:0;
 			padding:0;
-	
-	
+			width:100%;
 			list-style-type:none;
 			>li{
-				background-color:cornsilk;
+				position:relative;
 				border-color: darkgray;
 				border-style: dashed;				
-				border-width: 0.1rem 0 0 0;
-				padding:0.2em 1em;
+				border-width: 1px;
+				padding:0.1em 1em 0.5em 1em;
+				width:inherit;
 
 				margin: 1em 0;
 				div{
 					margin:0;
 					padding:0;
 				}
-				>div{
-					display: inline-block;
-					>div,input{
-						font-size:1.2rem;
-					}
-				}
-				
 				>div:first-child{
-					width:18em;
 					>div:first-child{
 						display:block;
-						font-size:1rem;
-						padding-right:1rem;
-						color:black;
+						font-size:0.6em;
+						padding-right:1em;
+						color:#000;
 					}
 					>div:nth-child(2){
+						font-size:1em;
 						width:100%;
 					}
 				}
 				>div:nth-child(2){
-					width:10em;
-					position:relative;
-					// padding:0 0.5em;
 					>div{
+						padding: 0.1em;
+						text-align: center;
 						color:black;
-						font-size:1rem;
+						font-size:0.6em;
 					}
 					>input{
+						font-size:1em;
+						border-color:transparent;
 						background-color:transparent;
-						border-width: 0 0 1px 0;
-						width:100%;
 						text-align:right;
 					}
+				}				
+				//横長
+				@media (orientation: landscape) {
+					>div{
+						display: inline-block;
+					}
+					>div:first-child{
+						margin-left:0;
+						margin-right:auto;
+						width:66%;
+					}
+					>div:nth-child(2){
+						width:33%;
+						padding-left:0.5em;
+						border-width:  0 0 1px 0;
+						>div{
+							width:100%;
+						}
+						>input{
+							width:100%;
+							border: solid gray;
+							border-width:  0 0 1px 0;
+		
+						}						
+					}
+	
 				}
-				>div:last-child{
+				//縦長
+				@media (orientation: portrait){
+					>div{
+						font-size:1.5em;
+						width:100%;
+						// display: inline-block;
+					}
+					>div:first-child{
+					}
+					>div:nth-child(2){
+						border: solid gray;
+						border-width:  0 0 1px 0;
+						>div{
+							display: inline-block;
+							width:20%;
+						}
+						>input{
+							width:80%;
+							margin-left: 0;
+							margin-right: auto;
+						}
+
+					}
 				}
+
+
 			}
 		}
 	}
@@ -132,12 +191,12 @@ a{
 			border: solid 0.1em;
 			margin: 0.5em 0;
 			border-radius: 0.25em;
-			padding: 0.1em;
+			padding: 0.5em;
 			>div:nth-child(1){
-				span:nth-child(1){
+				>span:nth-child(1){
 					font-size:2em;
 				}
-				span:nth-child(2){
+				>span:nth-child(2){
 					font-size:1em;
 				}
 			}
@@ -147,7 +206,7 @@ a{
 			>button{
 				background-color: #00acee;
 				color:white;
-				margin:auto;
+				margin:0.25em auto;
 				padding:0 1em;
 				border-radius: 1em;
 				height:2em;
@@ -156,17 +215,104 @@ a{
 		}
 	}
 	#header{
+		position:relative;
+		margin: 0.5em 0;
 		width:100%;
-		text-align:right;
-		>i{
-			cursor:pointer;
-			font-size:2em;
-			color: #00acee;
+		// text-align:right;
+		>*{
+			font-size:1.2em;
+
+			display: inline-block;		
+			padding:0;
+			margin: 0;
+			>*{
+				padding:0;
+				margin: 0;
+			}
+		}
+
+		>ul{
+			vertical-align:top;
+			width:66%;
+			list-style-type:none;
+			// padding:0 auto;
+			>li{
+				// height:2em;
+				cursor:pointer;
+			}
+				
+			li{
+				border-radius:1em;
+				padding:0 0.5em;
+				// margin:0.1em 1em 0.1em 0;
+				display: inline-block;
+				background-color: @CL_BS_INFO;
+				color:white;
+			}
+		}
+		>div:nth-child(2){
+			text-align: right;
+			width:33%;
+			>div{
+				display: inline-block;
+				width:1.5em;
+				height:1.5em;
+				border-radius:0.75em;
+				// padding:0.25em;
+				border-width: 0;
+				border:none;
+				text-align:center;
+				vertical-align: middle;
+			}
+			>div:nth-child(1){
+				&:extend(.TWITTER_PANEL);
+				>i{
+					margin:auto;
+					padding:auto;
+
+					// width:1.5em;
+					// font-size:0.8em;
+				}
+				margin:0.1em;
+			}
+			>div:nth-child(2){
+				background-color: orange;
+				>a{
+					// width:2em;
+					// border-radius:0.25em;
+					// padding:0.25em;
+					color:white;
+				}
+			}
 		}
 	}
 	#footer{
-		// margin:1em;
-		height:2em;
+		#links{
+			width:100%;
+			ul{
+				list-style-type:none;
+				margin:0;
+				padding:auto;				
+				li{
+					border-radius:0.1em;
+					padding:0.1em 0.2em;
+					margin:0.1em 1em 0.1em 0;
+					display: inline-block;
+					background-color: #eee;
+				}
+				a{
+				}
+			}
+		}
+		>div:nth-child(1),div:nth-child(2){
+			margin-top:1em;
+			text-align:center;
+		}
+		>div:nth-child(3){
+			font-size:0.5em;
+			text-align:right;
+		}
+
 	}
 }
 
