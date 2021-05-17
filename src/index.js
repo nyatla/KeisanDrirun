@@ -612,8 +612,22 @@ class ProblemTable extends TagCtrl{
 		let rows=[];
 		for(var i=0;i<this._p.length;i++){
 			this._p[i].bind($(tags[i]));
-			console.log($(tags[i]).width());		
 		}
+		//Enterで次の要素へ行くやつ
+		let inputs=tag.find('input');
+		inputs.on("keydown", function(e) {
+			var n = inputs.length;
+			if (e.which == 13) {
+				e.preventDefault();
+				var Index = inputs.index(this);            // 現在の要素
+				var nextIndex = inputs.index(this) + 1;    // 次の要素
+				if (nextIndex < n) {
+					inputs[nextIndex].focus();    // 次の要素へフォーカスを移動
+				} else {
+					inputs[Index].blur();         // 最後の要素ではフォーカスを外す
+				}
+			}
+		});
 	}
 	confirmAnswer(){
 		let score=[0,0,0];//pass,fail,nothing
@@ -742,7 +756,7 @@ App.prototype.PROBLEMS_TBL=
 
 $(document).ready(function()
 {
-	const VERSION="v20210515.03";
+	const VERSION="v20210517.01";
 	(new App(VERSION)).run();
 });
 
